@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Treina Comigo</title>
+  <meta name="description" content="Musculação e corrida com a personal Renata, acompanhadas pelo app.">
+  <meta name="theme-color" content="#0b7a63">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <style>
+    .abertura { padding: 1rem 0 2rem; }
+    .abertura p { font-size: 1.1rem; max-width: 28rem; margin-top: 1rem; }
+    .planos { list-style: none; margin: 0 0 2rem; padding: 0; border-top: 2px solid var(--tinta); }
+    .plano { display: grid; grid-template-columns: 1fr auto; gap: .25rem 1rem; align-items: center; padding: 1.1rem 0; border-bottom: 1px solid var(--linha); }
+    .plano h2 { margin: 0; }
+    .plano .modulos { grid-column: 1; display: flex; gap: .4rem; flex-wrap: wrap; }
+    .plano .desc { grid-column: 1; margin: .2rem 0 0; color: var(--tinta-2); }
+    .plano .botao { grid-column: 2; grid-row: 1 / span 3; }
+    .plano .preco { font-weight: 700; }
+    .entrar h2 { margin-bottom: 1rem; }
+    @media (min-width: 900px) {
+      .pagina.larga { max-width: 64rem; display: grid; grid-template-columns: 1.25fr 1fr; gap: 3rem; align-items: start; }
+      .pagina.larga .abertura { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="pagina larga">
+    <section class="abertura">
+      <h1 class="titulo">Treina<br>Comigo</h1>
+      <p>Treino de musculação e plano de corrida montados pela personal Renata, com tudo registrado no seu celular.</p>
+    </section>
+
+    <section aria-labelledby="t-planos">
+      <h2 id="t-planos" class="pequeno suave" style="font-variation-settings:'wdth' 100;font-weight:600">Escolha como quer treinar</h2>
+      <ul class="planos" id="planos"><li class="plano suave">Carregando os planos…</li></ul>
+    </section>
+
+    <section class="bloco entrar" aria-labelledby="t-entrar">
+      <h2 id="t-entrar">Já é aluno? Entre</h2>
+      <div class="aviso erro" id="erro-login" role="alert" hidden></div>
+      <form id="form-login" novalidate>
+        <div class="campo"><label for="email">E-mail</label><input id="email" type="email" autocomplete="email" required></div>
+        <div class="campo"><label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password" required></div>
+        <button class="botao cheio" type="submit">Entrar</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+  <script type="module">
+    import { entrar, minhaConta, planosAtivos, destinoDaConta, esc } from './js/supabase.js';
+
+    const brl = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    async function mostrarPlanos() {
+      const ul = document.getElementById('planos');
+      try {
+        const planos = await planosAtivos();
+        ul.innerHTML = planos.map((p) => `
+          <li class="plano">
+            <h2>${esc(p.nome)}</h2>
+            <div class="modulos">
+              ${p.musculacao ? '<span class="selo">Musculação</span>' : ''}
+              ${p.corrida ? '<span class="selo">Corrida</span>' : ''}
+              ${Number(p.valor_mensal) > 0 ? `<span class="preco">${brl(p.valor_mensal)}/mês</span>` : ''}
+            </div>
+            ${p.descricao ? `<p class="desc">${esc(p.descricao)}</p>` : ''}
+            <a class="botao" href="cadastro.html?plano=${encodeURIComponent(p.id)}">Começar</a>
+          </li>`).join('');
+      } catch (e) {
+        ul.innerHTML = '<li class="plano">Não foi possível carregar os planos. Recarregue a página.</li>';
+      }
+    }
+
+    document.getElementById('form-login').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const caixa = document.getElementById('erro-login');
+      const btn = ev.submitter; btn.disabled = true; caixa.hidden = true;
+      const r = await entrar(document.getElementById('email').value, document.getElementById('senha').value);
+      if (!r.ok) { caixa.textContent = r.erro; caixa.hidden = false; btn.disabled = false; return; }
+      location.href = destinoDaConta(await minhaConta());
+    });
+
+    mostrarPlanos();
+    minhaConta().then((c) => { if (c) location.replace(destinoDaConta(c)); }).catch(() => {});
+  </script>
+</body>
+</html>

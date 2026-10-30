@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cadastro · Treina Comigo</title>
+  <meta name="theme-color" content="#0b7a63">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <style>
+    .progresso { margin-bottom: 1.25rem; }
+    .progresso .barra { height: 6px; background: var(--linha); border-radius: 999px; overflow: hidden; margin-top: .4rem; }
+    .progresso .barra i { display: block; height: 100%; background: var(--quadra); transition: width .25s ease; }
+    .passo h1 { font-size: clamp(1.9rem, 8vw, 2.6rem); margin-bottom: 1rem; }
+    .resumo dt { font-weight: 600; margin-top: .6rem; }
+    .resumo dd { margin: 0; color: var(--tinta-2); }
+    .plano-escolha .opcao span { flex-direction: column; align-items: flex-start; gap: .2rem; padding: .9rem 1rem; }
+    .plano-escolha .opcao small { font-weight: 400; color: var(--tinta-2); }
+    .concluido { text-align: left; padding-top: 2rem; }
+  </style>
+</head>
+<body>
+  <main class="pagina">
+    <header class="topo">
+      <a class="marca" href="index.html">Treina Comigo</a>
+      <a class="pequeno" href="index.html">Já tenho conta</a>
+    </header>
+    <div class="progresso" id="progresso" aria-live="polite"></div>
+    <div class="aviso erro" id="erro-geral" role="alert" hidden></div>
+    <form id="form" novalidate></form>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+  <script type="module" src="js/cadastro.js"></script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+/* Treina Comigo — base visual. Archivo em duas larguras: expandida nos títulos, normal no texto. */
+:root {
+  --giz: #eef1ee;
+  --papel: #ffffff;
+  --tinta: #17212a;
+  --tinta-2: #4d5a63;
+  --linha: #d3d9d5;
+  --quadra: #0b7a63;
+  --quadra-forte: #075c4a;
+  --quadra-claro: #dcefe9;
+  --ambar: #b97a06;
+  --ambar-claro: #fbefd3;
+  --erro: #b3261e;
+  --erro-claro: #fbe3e1;
+  --raio: 10px;
+  --sombra-foco: 0 0 0 3px color-mix(in srgb, var(--quadra) 35%, transparent);
+  --largura: 34rem;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --giz: #121a1f; --papel: #1a242b; --tinta: #e8eeea; --tinta-2: #a6b3ad; --linha: #2f3c44;
+    --quadra: #3cc3a0; --quadra-forte: #6fd8bc; --quadra-claro: #173a33;
+    --ambar: #f0b545; --ambar-claro: #3b2e12; --erro: #ff8a80; --erro-claro: #3d1b19;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--giz); color: var(--tinta);
+  font-family: 'Archivo', system-ui, sans-serif; font-size: 1rem; line-height: 1.5;
+  font-variation-settings: 'wdth' 100;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--quadra-forte); text-underline-offset: 3px; }
+:focus-visible { outline: none; box-shadow: var(--sombra-foco); border-radius: 6px; }
+
+.titulo {
+  font-variation-settings: 'wdth' 125; font-weight: 800; letter-spacing: -0.01em;
+  line-height: 0.95; margin: 0;
+}
+h1.titulo { font-size: clamp(2.6rem, 11vw, 4.6rem); }
+h2 { font-variation-settings: 'wdth' 112; font-weight: 700; font-size: 1.35rem; line-height: 1.2; margin: 0 0 .5rem; }
+h3 { font-weight: 700; font-size: 1.05rem; margin: 0 0 .25rem; }
+p { margin: 0 0 .75rem; }
+.suave { color: var(--tinta-2); }
+.pequeno { font-size: .875rem; }
+
+.pagina { max-width: var(--largura); margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+.topo { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.marca { font-variation-settings: 'wdth' 125; font-weight: 800; font-size: 1.05rem; text-decoration: none; color: var(--tinta); }
+
+.bloco { background: var(--papel); border: 1px solid var(--linha); border-radius: var(--raio); padding: 1.25rem; margin-bottom: 1rem; }
+
+/* Formulários */
+.campo { margin-bottom: 1.1rem; }
+.campo > label, .campo > .rotulo { display: block; font-weight: 600; margin-bottom: .35rem; }
+.campo .ajuda { display: block; font-size: .85rem; color: var(--tinta-2); margin: -.15rem 0 .4rem; }
+input[type=text], input[type=email], input[type=password], input[type=tel], input[type=number], input[type=date], input[type=url], select, textarea {
+  width: 100%; font: inherit; color: var(--tinta); background: var(--papel);
+  border: 1.5px solid var(--linha); border-radius: 8px; padding: .7rem .8rem; min-height: 48px;
+}
+textarea { min-height: 96px; resize: vertical; }
+input:focus, select:focus, textarea:focus { border-color: var(--quadra); box-shadow: var(--sombra-foco); outline: none; }
+.campo.com-erro input, .campo.com-erro textarea, .campo.com-erro select { border-color: var(--erro); }
+.msg-erro { display: block; color: var(--erro); font-size: .875rem; margin-top: .35rem; }
+
+.opcoes { display: grid; gap: .5rem; }
+.opcoes.lado { grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); }
+.opcao { position: relative; }
+.opcao input { position: absolute; opacity: 0; inset: 0; }
+.opcao span {
+  display: flex; align-items: center; min-height: 48px; padding: .6rem .8rem; border: 1.5px solid var(--linha);
+  border-radius: 8px; background: var(--papel); cursor: pointer;
+}
+.opcao input:checked + span { border-color: var(--quadra); background: var(--quadra-claro); font-weight: 600; }
+.opcao input:focus-visible + span { box-shadow: var(--sombra-foco); }
+
+/* Botões */
+.botao {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  min-height: 48px; padding: .7rem 1.2rem; border-radius: 8px; border: 1.5px solid transparent;
+  font: inherit; font-weight: 700; text-decoration: none; cursor: pointer;
+  background: var(--quadra); color: #fff;
+}
+.botao:hover { background: var(--quadra-forte); }
+.botao.secundario { background: transparent; color: var(--tinta); border-color: var(--linha); }
+.botao.secundario:hover { border-color: var(--tinta-2); }
+.botao.perigo { background: transparent; color: var(--erro); border-color: var(--erro); }
+.botao.cheio { width: 100%; }
+.botao[disabled] { opacity: .55; cursor: progress; }
+.acoes { display: flex; gap: .75rem; margin-top: 1.25rem; }
+.acoes > * { flex: 1; }
+
+.aviso { border-radius: 8px; padding: .8rem 1rem; margin-bottom: 1rem; }
+.aviso.erro { background: var(--erro-claro); color: var(--erro); }
+.aviso.ok { background: var(--quadra-claro); color: var(--quadra-forte); }
+.aviso.atencao { background: var(--ambar-claro); color: var(--tinta); }
+
+.selo { display: inline-block; font-size: .8rem; font-weight: 600; padding: .15rem .55rem; border-radius: 999px; background: var(--quadra-claro); color: var(--quadra-forte); }
+.selo.ambar { background: var(--ambar-claro); color: var(--ambar); }
+.selo.erro { background: var(--erro-claro); color: var(--erro); }
+.selo.cinza { background: var(--giz); color: var(--tinta-2); border: 1px solid var(--linha); }
+
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Meu treino · Treina Comigo</title>
+  <meta name="theme-color" content="#0b7a63">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <style>
+    .ola { margin: .5rem 0 1.5rem; }
+    .ola h1 { font-size: clamp(2.2rem, 10vw, 3.4rem); }
+    .modulo { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+    .modulo p { margin: .3rem 0 0; }
+    .estado h1 { font-size: clamp(2rem, 9vw, 3rem); margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <main class="pagina" id="app" aria-busy="true">
+    <header class="topo">
+      <span class="marca">Treina Comigo</span>
+      <button class="botao secundario" id="sair" type="button" style="min-height:40px;padding:.4rem .9rem">Sair</button>
+    </header>
+    <div id="conteudo"><p class="suave">Carregando…</p></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+  <script type="module">
+    import { sb, exigirLogin, sair, esc } from './js/supabase.js';
+    import { telaDoAluno, statusCobranca, ROTULO_COBRANCA } from './js/regras.js';
+
+    document.getElementById('sair').addEventListener('click', sair);
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    const el = document.getElementById('conteudo');
+    const hoje = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+    const dataBR = (iso) => iso.split('-').reverse().join('/');
+    const primeiroNome = (n) => String(n ?? '').trim().split(/\s+/)[0];
+
+    function estado(titulo, texto) {
+      el.innerHTML = `<section class="estado"><h1 class="titulo">${titulo}</h1><p>${texto}</p></section>`;
+    }
+
+    async function cobrancaAtual(id) {
+      const { data } = await sb.from('cobrancas').select('vencimento,pago_em,valor').eq('aluno_id', id)
+        .order('vencimento', { ascending: false }).limit(3);
+      return (data ?? []).find((c) => !c.pago_em) ?? (data ?? [])[0] ?? null;
+    }
+
+    (async () => {
+      try {
+        const conta = await exigirLogin();
+        if (!conta) return;
+        if (conta.is_admin) { location.replace('painel.html'); return; }
+        const tela = telaDoAluno(conta);
+        const nome = esc(primeiroNome(conta.nome));
+        if (tela === 'aguardando') estado(`Oi, ${nome}`, 'Seu cadastro chegou para a Renata. Assim que ela aprovar, seu treino aparece aqui.');
+        else if (tela === 'recusado') estado('Cadastro não aprovado', 'A Renata não aprovou este cadastro. Fale com ela pelo WhatsApp para entender o motivo.');
+        else if (tela === 'pausado') estado('Acompanhamento pausado', 'Seu acesso está pausado. Fale com a Renata para voltar a treinar pelo app.');
+        else {
+          const c = await cobrancaAtual(conta.id);
+          const st = c ? statusCobranca(c, hoje) : null;
+          el.innerHTML = `
+            <section class="ola"><h1 class="titulo">Oi, ${nome}</h1><p class="suave">Plano ${esc(conta.plano_nome)}</p></section>
+            ${conta.musculacao ? `<article class="bloco modulo"><div><h2>Musculação</h2><p class="suave">Seu treino aparece aqui quando a Renata liberar.</p></div><span class="selo cinza">Em breve</span></article>` : ''}
+            ${conta.corrida ? `<article class="bloco modulo"><div><h2>Corrida</h2><p class="suave">Seu plano de corrida aparece aqui quando a Renata liberar.</p></div><span class="selo cinza">Em breve</span></article>` : ''}
+            ${c ? `<article class="bloco modulo"><div><h2>Mensalidade</h2><p class="suave">Vencimento ${dataBR(c.vencimento)}</p></div>
+              <span class="selo ${st === 'atrasada' ? 'erro' : st === 'aberta' ? 'ambar' : ''}">${ROTULO_COBRANCA[st]}</span></article>` : ''}`;
+        }
+      } catch (e) {
+        estado('Sem conexão', 'Não foi possível carregar seus dados. Confira a internet e recarregue a página.');
+      } finally {
+        document.getElementById('app').removeAttribute('aria-busy');
+      }
+    })();
+  </script>
+</body>
+</html>
