@@ -1,0 +1,45 @@
+name: Publicar o Treina Comigo
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency: deploy-ftp
+jobs:
+  ftp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir a pasta de destino (protege o site principal)
+        env:
+          FTP_DIR: ${{ secrets.FTP_DIR }}
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+        run: |
+          if [ -z "$FTP_SERVER" ]; then echo "::error::Falta o secret FTP_SERVER"; exit 1; fi
+          D="$(echo "$FTP_DIR" | tr -d '[:space:]')"
+          case "$D" in
+            treinacomigo|treinacomigo/|*/treinacomigo|*/treinacomigo/) ;;
+            /|"") D="/" ;;  # conta de FTP restrita à pasta do app: a raiz já é a pasta do app
+            *) echo "::error::FTP_DIR precisa apontar para a pasta do app"; exit 1 ;;
+          esac
+          case "$D" in */) ;; *) D="$D/" ;; esac
+          echo "FTP_DIR_OK=$D" >> "$GITHUB_ENV"
+          echo "Destino conferido."
+      - name: Gravar versão publicada
+        run: echo "${GITHUB_SHA::7} $(date -u +%Y-%m-%dT%H:%MZ)" > version.txt
+      - name: Enviar por FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ${{ env.FTP_DIR_OK }}
+          protocol: ftps
+          exclude: |
+            tests/**
+            supabase/**
+            docs/**
+            scripts/**
+            **/.git*
+            **/.git*/**
+            .github/**
+            README.md
