@@ -228,10 +228,22 @@ async function renderBiblioteca() {
     <ul class="lista">${lista.length ? lista.map((x) => `
       <li><button class="linha" data-ex="${x.id}"><span class="info"><strong>${esc(x.nome)}</strong><span class="meta">${esc(x.grupo)} · ${esc(x.equipamento ?? '')}</span></span>
         ${x.video_url ? '<span class="selo">Vídeo</span>' : ''}${x.ativo ? '' : '<span class="selo cinza">Oculto</span>'}</button></li>`).join('')
-      : `<li class="vazio">${st.exercicios.length ? 'Nenhum exercício com esse nome.' : 'A biblioteca está vazia.'}</li>`}</ul>`;
+      : `<li class="vazio">${st.exercicios.length ? 'Nenhum exercício com esse nome.' : 'A biblioteca está vazia. Carregue os exercícios iniciais para começar.'}</li>`}</ul>
+    ${st.exercicios.length ? '' : '<button class="botao cheio" id="carregar" type="button" style="margin-top:1rem">Carregar biblioteca inicial (188 exercícios)</button>'}`;
   $('busca').oninput = () => { st.busca = $('busca').value; const pos = $('busca').selectionStart; renderBiblioteca(); $('busca').focus(); $('busca').setSelectionRange(pos, pos); };
   $('grupo').onchange = () => { st.grupo = $('grupo').value; renderBiblioteca(); };
   $('novo').onclick = () => editarExercicio(null);
+  $('carregar')?.addEventListener('click', async (ev) => {
+    ev.target.disabled = true; ev.target.textContent = 'Carregando…';
+    try {
+      const r = await fetch('data/biblioteca-inicial.json', { cache: 'no-store' });
+      if (!r.ok) throw new Error('arquivo da biblioteca não encontrado');
+      const linhas = await r.json();
+      const { error } = await sb.from('exercicios').upsert(linhas, { onConflict: 'nome', ignoreDuplicates: true });
+      if (error) throw error;
+      st.exercicios = null; toast(`${linhas.length} exercícios carregados`); renderBiblioteca();
+    } catch (e) { erro(e); ev.target.disabled = false; ev.target.textContent = 'Tentar de novo'; }
+  });
   el.querySelectorAll('[data-ex]').forEach((x) => x.onclick = () => editarExercicio(Number(x.dataset.ex)));
 }
 

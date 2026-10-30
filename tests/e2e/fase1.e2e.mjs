@@ -242,6 +242,7 @@ function mockPainel(e) {
     if (u.pathname === '/rest/v1/exercicios') {
       if (m === 'GET') return { body: e.exercicios };
       if (m === 'PATCH') { const id = Number(u.searchParams.get('id').replace('eq.', '')); const x = e.exercicios.find((c) => c.id === id); Object.assign(x, corpo()); return { body: obj ? x : [x] }; }
+      if (m === 'POST') { e.upsertEx = { url: u.search, linhas: corpo() }; corpo().forEach((x, i) => e.exercicios.push({ id: i + 1, ativo: true, ...x })); return { status: 201, body: [] }; }
     }
     return base(u, req);
   };
@@ -318,6 +319,20 @@ await caso('painel: edita exercício, mostra prévia do YouTube e recusa link de
   await page.getByText('Exercício salvo').waitFor();
   assert.equal(e.exercicios[0].video_url, 'https://youtu.be/dQw4w9WgXcQ');
   assert.equal(await page.locator('.selo', { hasText: 'Vídeo' }).count(), 1);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+await caso('painel: biblioteca vazia carrega os 188 exercícios iniciais', async () => {
+  const e = { alunos: [], cobrancas: [], exercicios: [] };
+  const { ctx, page, erros } = await entrarComoAdmin(browser, e);
+  await page.getByRole('tab', { name: 'Biblioteca' }).click();
+  await page.getByRole('button', { name: /Carregar biblioteca inicial/ }).click();
+  await page.getByText('188 exercícios carregados').waitFor();
+  assert.equal(e.upsertEx.linhas.length, 188);
+  assert.match(decodeURIComponent(e.upsertEx.url), /on_conflict=nome/);
+  assert.equal(await page.getByRole('button', { name: /Carregar biblioteca inicial/ }).count(), 0);
+  if (shots) await page.screenshot({ path: `${shots}/painel-biblioteca.png`, fullPage: false });
   assert.deepEqual(erros, []);
   await ctx.close();
 });

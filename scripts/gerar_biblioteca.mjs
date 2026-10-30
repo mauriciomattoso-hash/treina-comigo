@@ -12,6 +12,13 @@ export function lerExLib(html) {
 
 const q = (s) => (s == null || s === '' ? 'null' : `'${String(s).replace(/'/g, "''")}'`);
 
+// Linhas prontas para gravar na tabela exercicios (usado pelo botão do painel).
+export function gerarLinhas(exLib, textos) {
+  return exLib.map(([nome, grupo, padrao, equipamento]) => ({
+    nome, grupo, padrao, equipamento, instrucao: textos[nome]?.instrucao ?? null, pontos_atencao: textos[nome]?.pontos_atencao ?? null,
+  }));
+}
+
 export function gerarSql(exLib, textos) {
   const linhas = exLib.map(([nome, grupo, padrao, equipamento]) => {
     const t = textos[nome] ?? {};
@@ -36,5 +43,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const faltando = exLib.filter(([n]) => !textos[n]).map(([n]) => n);
   if (faltando.length) { console.error('Sem texto:', faltando.join(', ')); process.exit(1); }
   fs.writeFileSync(new URL('../supabase/migrations/0003_biblioteca.sql', dir), gerarSql(exLib, textos));
-  console.log(`0003_biblioteca.sql com ${exLib.length} exercícios`);
+  fs.mkdirSync(new URL('../data/', dir), { recursive: true });
+  fs.writeFileSync(new URL('../data/biblioteca-inicial.json', dir), JSON.stringify(gerarLinhas(exLib, textos)) + '\n');
+  console.log(`0003_biblioteca.sql e data/biblioteca-inicial.json com ${exLib.length} exercícios`);
 }
