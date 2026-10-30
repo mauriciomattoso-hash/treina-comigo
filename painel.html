@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Painel · Treina Comigo</title>
+  <meta name="theme-color" content="#0b7a63">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <style>
+    :root { --largura: 60rem; }
+    .abas { display: flex; gap: .25rem; overflow-x: auto; border-bottom: 2px solid var(--tinta); margin-bottom: 1.25rem; }
+    .abas button { font: inherit; font-size: .95rem; font-weight: 600; background: none; border: 0; padding: .65rem .7rem; color: var(--tinta-2); cursor: pointer; white-space: nowrap; border-radius: 8px 8px 0 0; }
+    .abas button[aria-selected="true"] { color: var(--papel); background: var(--tinta); }
+    .filtros { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filtros button { font: inherit; font-size: .9rem; border: 1.5px solid var(--linha); background: var(--papel); color: var(--tinta); border-radius: 999px; padding: .35rem .85rem; cursor: pointer; }
+    .filtros button[aria-pressed="true"] { border-color: var(--quadra); background: var(--quadra-claro); font-weight: 600; }
+    .lista { list-style: none; margin: 0; padding: 0; background: var(--papel); border: 1px solid var(--linha); border-radius: var(--raio); }
+    .lista li + li { border-top: 1px solid var(--linha); }
+    .linha { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; width: 100%; text-align: left; background: none; border: 0; font: inherit; color: inherit; cursor: pointer; }
+    .linha .info { flex: 1; min-width: 0; }
+    .linha strong { display: block; }
+    .linha .meta { font-size: .875rem; color: var(--tinta-2); }
+    .vazio { padding: 1.5rem 1rem; color: var(--tinta-2); }
+    .ficha dl { display: grid; grid-template-columns: 1fr; gap: .1rem; margin: 0; }
+    .ficha dt { font-weight: 600; margin-top: .7rem; }
+    .ficha dd { margin: 0; color: var(--tinta-2); white-space: pre-wrap; }
+    .ficha .alerta dd { color: var(--erro); font-weight: 600; }
+    .grade-2 { display: grid; gap: 1rem; }
+    @media (min-width: 760px) { .grade-2 { grid-template-columns: 1fr 1fr; } }
+    .inline { display: flex; gap: .5rem; align-items: end; flex-wrap: wrap; }
+    .inline .campo { margin: 0; flex: 1; min-width: 8rem; }
+    .contador { display: inline-flex; min-width: 1.4rem; height: 1.4rem; align-items: center; justify-content: center; font-size: .75rem; border-radius: 999px; background: var(--ambar); color: #fff; margin-left: .35rem; padding: 0 .35rem; }
+    .resumo-mes { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .resumo-mes div { font-size: .875rem; color: var(--tinta-2); }
+    .resumo-mes strong { display: block; font-size: 1.3rem; color: var(--tinta); font-variation-settings: 'wdth' 112; }
+    .toast { position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%); background: var(--tinta); color: var(--papel); padding: .7rem 1.1rem; border-radius: 8px; z-index: 10; }
+  </style>
+</head>
+<body>
+  <main class="pagina" id="app" aria-busy="true">
+    <header class="topo">
+      <span class="marca">Treina Comigo · Painel</span>
+      <button class="botao secundario" id="sair" type="button" style="min-height:40px;padding:.4rem .9rem">Sair</button>
+    </header>
+    <nav class="abas" role="tablist" id="abas">
+      <button role="tab" data-aba="alunos" aria-selected="true">Alunos<span class="contador" id="n-pendentes" hidden></span></button>
+      <button role="tab" data-aba="cobrancas" aria-selected="false">Cobranças</button>
+      <button role="tab" data-aba="biblioteca" aria-selected="false">Biblioteca</button>
+      <button role="tab" data-aba="planos" aria-selected="false">Planos</button>
+    </nav>
+    <div class="aviso erro" id="erro" role="alert" hidden></div>
+    <section id="conteudo"><p class="suave">Carregando…</p></section>
+  </main>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+  <script type="module" src="js/painel.js"></script>
+</body>
+</html>

@@ -32,7 +32,7 @@ async function novoContexto(browser, mock) {
   await ctx.route('https://cdn.jsdelivr.net/**', (r) => r.fulfill({ path: UMD, contentType: 'text/javascript' }));
   await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
   await ctx.route('https://fonts.gstatic.com/**', (r) => r.fulfill({ status: 404 }));
-  await ctx.route('https://naoulsepwaeivertruva.supabase.co/**', async (r) => {
+  await ctx.route('https://hptavtnwiljbkiupects.supabase.co/**', async (r) => {
     const u = new URL(r.request().url());
     const resp = await mock(u, r.request());
     if (!resp) return r.fulfill({ status: 404, body: '{}' });
@@ -220,6 +220,118 @@ await caso('admin que entra vai para o painel', async () => {
   await page.fill('#email', 'r@b.com'); await page.fill('#senha', '123456');
   await page.click('#form-login button');
   await page.waitForURL(/painel\.html/);
+  await ctx.close();
+});
+
+
+function mockPainel(e) {
+  const base = mockBase(e);
+  return async (u, req) => {
+    const m = req.method(), obj = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object');
+    const corpo = () => JSON.parse(req.postData() || '{}');
+    if (m === 'OPTIONS') return { body: {} };
+    if (u.pathname === '/rest/v1/perfis') return { body: e.alunos };
+    if (u.pathname === '/rest/v1/anamneses') { const r = { respostas: e.anamnese }; return { body: obj ? r : [r] }; }
+    if (u.pathname === '/rest/v1/rpc/aprovar_aluno') { const b = corpo(); const a = e.alunos.find((x) => x.id === b.p_aluno); a.status = 'ativo'; a.dia_vencimento = b.p_dia_vencimento; e.rpc = b; return { status: 204, body: null }; }
+    if (u.pathname === '/rest/v1/cobrancas') {
+      if (m === 'GET') { const ref = u.searchParams.get('referencia')?.replace('eq.', ''); const id = u.searchParams.get('aluno_id')?.replace('eq.', '');
+        return { body: e.cobrancas.filter((c) => (!ref || c.referencia === ref) && (!id || c.aluno_id === id)) }; }
+      if (m === 'POST') { e.upserts = (e.upserts ?? 0) + 1; for (const c of [].concat(corpo())) if (!e.cobrancas.some((x) => x.aluno_id === c.aluno_id && x.referencia === c.referencia)) e.cobrancas.push({ id: e.cobrancas.length + 1, pago_em: null, ...c }); return { status: 201, body: [] }; }
+      if (m === 'PATCH') { const id = Number(u.searchParams.get('id').replace('eq.', '')); Object.assign(e.cobrancas.find((c) => c.id === id), corpo()); return { status: 204, body: null }; }
+    }
+    if (u.pathname === '/rest/v1/exercicios') {
+      if (m === 'GET') return { body: e.exercicios };
+      if (m === 'PATCH') { const id = Number(u.searchParams.get('id').replace('eq.', '')); const x = e.exercicios.find((c) => c.id === id); Object.assign(x, corpo()); return { body: obj ? x : [x] }; }
+    }
+    return base(u, req);
+  };
+}
+
+async function entrarComoAdmin(browser, e) {
+  e.conta = { id: 'adm', nome: 'Renata', status: 'ativo', is_admin: true };
+  const ctx = await novoContexto(browser, mockPainel(e));
+  const page = await ctx.newPage();
+  const erros = []; page.on('pageerror', (x) => erros.push(x.message));
+  await page.goto(`${base}/index.html`);
+  await page.fill('#email', 'r@b.com'); await page.fill('#senha', '123456');
+  await page.click('#form-login button');
+  await page.waitForURL(/painel\.html/);
+  return { ctx, page, erros };
+}
+
+const hojeSP = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+const refMes = hojeSP.slice(0, 7) + '-01';
+
+await caso('painel: aprova pendente com dia de vencimento e mostra alerta da anamnese', async () => {
+  const e = {
+    alunos: [{ id: 'a1', nome: 'Ana Souza', email: 'ana@x.com', telefone: '21999990000', plano_id: 'treina', status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }],
+    anamnese: { objetivo: 'Emagrecer', dor_peito: 'sim', altura_cm: 165 }, cobrancas: [],
+  };
+  const { ctx, page, erros } = await entrarComoAdmin(browser, e);
+  await page.getByText('Ana Souza').click();
+  await page.getByText('Esta anamnese tem respostas que pedem atenção').waitFor();
+  assert.equal(await page.locator('.alerta dt').innerText(), 'Sente dor no peito quando faz esforço?');
+  if (shots) await page.screenshot({ path: `${shots}/painel-ficha.png`, fullPage: true });
+  await page.fill('#dia', '15');
+  await page.getByRole('button', { name: 'Aprovar' }).click();
+  await page.getByText('Ativo', { exact: true }).waitFor();
+  assert.deepEqual(e.rpc, { p_aluno: 'a1', p_dia_vencimento: 15 });
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+await caso('painel: gera mensalidades do mês uma vez só e marca pago', async () => {
+  const e = {
+    alunos: [
+      { id: 'a1', nome: 'Ana', plano_id: 'treina', status: 'ativo', dia_vencimento: 10, criado_em: '2026-10-01' },
+      { id: 'a2', nome: 'Bia', plano_id: 'corre', status: 'ativo', dia_vencimento: 5, criado_em: '2026-10-01' },
+      { id: 'a3', nome: 'Caio', plano_id: 'forca', status: 'pausado', dia_vencimento: 5, criado_em: '2026-10-01' },
+    ], cobrancas: [],
+  };
+  const { ctx, page, erros } = await entrarComoAdmin(browser, e);
+  await page.getByRole('tab', { name: 'Cobranças' }).click();
+  await page.getByRole('button', { name: 'Gerar mensalidades (2)' }).click();
+  await page.getByText('2 mensalidade(s) gerada(s)').waitFor();
+  assert.equal(e.cobrancas.length, 2);
+  assert.equal(e.cobrancas.find((c) => c.aluno_id === 'a2').vencimento, `${refMes.slice(0, 7)}-05`);
+  assert.equal(await page.getByRole('button', { name: /Gerar mensalidades/ }).isDisabled(), true);
+  page.once('dialog', (d) => d.accept('03/' + refMes.slice(5, 7) + '/' + refMes.slice(0, 4)));
+  await page.getByRole('button', { name: 'Marcar pago' }).first().click();
+  await page.getByText('Pagamento registrado').waitFor();
+  assert.ok(e.cobrancas.some((c) => c.pago_em === `${refMes.slice(0, 7)}-03`));
+  if (shots) await page.screenshot({ path: `${shots}/painel-cobrancas.png`, fullPage: true });
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+await caso('painel: edita exercício, mostra prévia do YouTube e recusa link de fora', async () => {
+  const e = { alunos: [], cobrancas: [], exercicios: [{ id: 1, nome: 'Agachamento Livre', grupo: 'Quadríceps', equipamento: 'Barra', instrucao: 'x', pontos_atencao: 'y', video_url: null, ativo: true }] };
+  const { ctx, page, erros } = await entrarComoAdmin(browser, e);
+  await page.getByRole('tab', { name: 'Biblioteca' }).click();
+  await page.getByText('Agachamento Livre').click();
+  await page.fill('#ex-video', 'https://vimeo.com/123');
+  await page.getByRole('button', { name: 'Salvar exercício' }).click();
+  await page.getByText('O link do vídeo precisa ser do YouTube.').waitFor();
+  await page.fill('#ex-video', 'https://youtu.be/dQw4w9WgXcQ');
+  await page.locator('#ex-prev iframe').waitFor({ state: 'attached' });
+  await page.getByRole('button', { name: 'Salvar exercício' }).click();
+  await page.getByText('Exercício salvo').waitFor();
+  assert.equal(e.exercicios[0].video_url, 'https://youtu.be/dQw4w9WgXcQ');
+  assert.equal(await page.locator('.selo', { hasText: 'Vídeo' }).count(), 1);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+await caso('aluno que abre o painel volta para o app dele', async () => {
+  const e = { conta: { id: 'u1', nome: 'Ana', status: 'ativo', is_admin: false, plano_nome: 'Treina Comigo', musculacao: true, corrida: true } };
+  const ctx = await novoContexto(browser, mockBase(e));
+  const page = await ctx.newPage();
+  await page.goto(`${base}/index.html`);
+  await page.fill('#email', 'a@b.com'); await page.fill('#senha', '123456');
+  await page.click('#form-login button');
+  await page.waitForURL(/aluno\.html/);
+  await page.goto(`${base}/painel.html`);
+  await page.waitForURL(/aluno\.html/);
   await ctx.close();
 });
 
