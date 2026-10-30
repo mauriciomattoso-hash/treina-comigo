@@ -1,0 +1,9 @@
+{
+  "name": "treina-comigo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "biblioteca": "node scripts/gerar_biblioteca.mjs"
+  }
+}

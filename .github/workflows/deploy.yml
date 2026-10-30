@@ -43,3 +43,4 @@ jobs:
             **/.git*/**
             .github/**
             README.md
+            package.json
