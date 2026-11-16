@@ -53,5 +53,15 @@ Sugestão concreta:
 ### Revisão de PR
 Todo PR do Claude pode ser revisado pelo ChatGPT antes do merge. Foco: segurança (RLS, chaves expostas no front), regressões, custo de API e se o PR respeita as decisões registradas.
 
+### Modo automático (GitHub Actions)
+`.github/workflows/claude.yml` liga o ciclo:
+1. Claude abre PR → Codex revisa sozinho (Automatic reviews ligado nas configurações do Codex).
+2. A revisão do Codex dispara o Claude, que corrige ou contesta, dá push no mesmo PR e pede `@codex review` de novo.
+3. Máximo de 2 rodadas por PR; depois disso o Mauricio decide.
+4. Issue com a label `claude` vira tarefa para o Claude (ele abre PR). Comentário com `@claude` também aciona.
+5. Merge na `main` é sempre manual (Mauricio), porque publica o site.
+
+Para o Codex: revise com foco em P0/P1 e sempre respeitando as decisões de `docs/colaboracao/PROJETO.md`. Se discordar de uma decisão, diga isso na revisão em vez de pedir a mudança direto.
+
 ### Deploy
 Push na `main` publica por FTP (GitHub Actions, `.github/workflows/deploy.yml`). Por isso: trabalhar em branch, abrir PR e só fazer merge depois da revisão. `AGENTS.md`, `CLAUDE.md` e `docs/` não vão para o servidor.
