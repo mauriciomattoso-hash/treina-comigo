@@ -1,0 +1,101 @@
+name: Claude (automático)
+
+# Ciclo automático Claude + ChatGPT:
+# - Codex (ChatGPT) revisa o PR  -> Claude corrige e dá push no mesmo PR (até 2 rodadas).
+# - Issue com label "claude"      -> Claude constrói e abre PR.
+# - Comentário com "@claude"      -> Claude responde/age.
+# Merge na main é sempre manual (Mauricio), porque publica o site.
+
+on:
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: claude-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+env:
+  MAX_RODADAS: "2"
+
+jobs:
+  revisao-do-codex:
+    if: >
+      github.event_name == 'pull_request_review' &&
+      contains(github.event.review.user.login, 'codex')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Contar rodadas
+        id: rodadas
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request.number;
+            const reviews = await github.paginate(github.rest.pulls.listReviews, { ...context.repo, pull_number: pr });
+            const n = reviews.filter(r => r.user.login.includes('codex')).length;
+            core.setOutput('n', String(n));
+            if (n > Number(process.env.MAX_RODADAS)) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: pr,
+                body: `⏸️ Limite de ${process.env.MAX_RODADAS} rodadas Claude ↔ ChatGPT atingido neste PR. @mauriciomattoso-hash, você decide o que fica.` });
+            }
+      - uses: actions/checkout@v4
+        if: steps.rodadas.outputs.n <= env.MAX_RODADAS
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: anthropics/claude-code-action@v1
+        if: steps.rodadas.outputs.n <= env.MAX_RODADAS
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            O ChatGPT (Codex) acabou de revisar o PR #${{ github.event.pull_request.number }} deste repositório (rodada ${{ steps.rodadas.outputs.n }} de ${{ env.MAX_RODADAS }}).
+            Siga o AGENTS.md e o CLAUDE.md.
+            1. Leia a revisão e todos os comentários dele no PR.
+            2. Para cada ponto: se concorda, corrija no código; se discorda, responda no comentário explicando por quê (sem concordar por educação).
+            3. Rode os testes do projeto se existirem (npm test).
+            4. Faça commit e push na branch do PR. Não faça merge.
+            5. Registre o que aceitou/recusou em docs/colaboracao/DISCUSSAO.md e uma linha no Log de docs/colaboracao/PROJETO.md, assinando [Claude].
+            6. Se mudou código e ainda não é a última rodada, termine com um comentário no PR contendo "@codex review". Se não havia nada a corrigir, comente "✅ Pronto para o merge do Mauricio".
+          claude_args: "--max-turns 40"
+
+  tarefa-por-issue:
+    if: github.event_name == 'issues' && github.event.label.name == 'claude'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Tarefa da issue #${{ github.event.issue.number }}: "${{ github.event.issue.title }}".
+            Siga o AGENTS.md e o CLAUDE.md. Leia a issue inteira.
+            Se for decisão de arquitetura/escopo ainda não registrada em docs/colaboracao/PROJETO.md, abra o item em DISCUSSAO.md com sua recomendação e comente na issue pedindo parecer, sem implementar.
+            Se estiver clara, implemente numa branch nova, rode os testes, abra um PR que cite a issue e registre no Log. Nunca faça merge nem push na main.
+          claude_args: "--max-turns 60"
+
+  mencao:
+    if: >
+      github.event_name == 'issue_comment' &&
+      contains(github.event.comment.body, '@claude') &&
+      !contains(github.event.comment.user.login, '[bot]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: "--max-turns 40"
